@@ -20,6 +20,8 @@ export const AuthProvider = ({ children }) => {
         })
         .catch(err => {
           console.warn('API authentication error or session expired:', err.message);
+          localStorage.removeItem('token');
+          setToken('');
           setUser(null);
         })
         .finally(() => setLoading(false));

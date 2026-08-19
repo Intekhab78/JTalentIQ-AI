@@ -669,12 +669,12 @@ export default function SuperAdminDashboard() {
                         <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                           Dedicated Portal URL: 
                           <a
-                            href={`http://localhost:5173/apply/${group.slug}`}
+                            href={`${window.location.origin}/apply/${group.slug}`}
                             target="_blank"
                             rel="noreferrer"
                             className="font-mono text-indigo-400 hover:underline flex items-center gap-1"
                           >
-                            http://localhost:5173/apply/{group.slug} <ExternalLink className="w-3 h-3" />
+                            {window.location.origin}/apply/{group.slug} <ExternalLink className="w-3 h-3" />
                           </a>
                         </p>
                       </div>

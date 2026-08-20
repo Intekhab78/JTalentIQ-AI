@@ -8,7 +8,8 @@ const {
   createSubscriptionPlan, 
   updateSubscriptionPlan, 
   assignPlanToCompany,
-  getCompanyWiseCandidates
+  getCompanyWiseCandidates,
+  getCandidateUserLogins
 } = require('../controllers/superAdminController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -18,6 +19,7 @@ router.use(authorize('super_admin'));
 router.get('/stats', getSystemStats);
 router.get('/companies', getAllCompanies);
 router.get('/company-candidates', getCompanyWiseCandidates);
+router.get('/candidate-logins', getCandidateUserLogins);
 router.put('/companies/:id/toggle', toggleCompanyStatus);
 router.get('/plans', getSubscriptionPlans);
 router.post('/plans', createSubscriptionPlan);

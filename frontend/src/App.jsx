@@ -57,6 +57,8 @@ export default function App() {
           <Route path="/widget-embed" element={<CandidateEmbedPopup />} />
           <Route path="/apply" element={<CompanyCareerPortal />} />
           <Route path="/apply/:companySlug" element={<CompanyCareerPortal />} />
+          <Route path="/apply/:companySlug/job/:jobId" element={<CompanyCareerPortal />} />
+          <Route path="/apply/job/:jobId" element={<CompanyCareerPortal />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

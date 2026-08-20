@@ -14,21 +14,12 @@ export default function CandidateWidget() {
   const [jobs, setJobs] = useState([]);
 
   const [formData, setFormData] = useState({
-    name: 'Athahdeep',
-    email: 'athahdeep@example.com',
-    phone: '+1 555-0192',
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: '',
     jobId: '',
     jobTitle: '',
-    resumeText: `ATHAHDEEP - SENIOR SOFTWARE ENGINEER
-Email: athahdeep@example.com | Phone: +1 555-0192
-
-SUMMARY:
-Experienced Full Stack Software Engineer specializing in React, Node.js, Express, MongoDB, and TypeScript. 
-
-TECHNICAL SKILLS:
-- Frontend: React.js, TypeScript, HTML5, CSS3, Tailwind CSS
-- Backend: Node.js, Express.js, MongoDB, RESTful APIs
-- Tools: Git, GitHub, Docker, Postman`
+    resumeText: ''
   });
 
   useEffect(() => {

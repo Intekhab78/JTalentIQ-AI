@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Sparkles, ShieldCheck, Building2, UserCheck, LogOut, Award } from 'lucide-react';
+import { Sparkles, ShieldCheck, Building2, UserCheck, LogOut, Award, Briefcase, GraduationCap } from 'lucide-react';
 
 export default function Navbar() {
   const { user, activeRole, switchRole, logout } = useContext(AuthContext);
@@ -9,6 +9,7 @@ export default function Navbar() {
   const location = useLocation();
 
   const isSuperAdminUser = user?.role === 'super_admin' || user?.email === 'admin@platform.com';
+  const isCandidateUser = user?.role === 'candidate';
 
   return (
     // http://localhost:5173/superadmin/login
@@ -32,6 +33,9 @@ export default function Navbar() {
 
         {/* Section Navigation Links */}
         <div className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-300">
+          <Link to="/apply" className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 rounded-full">
+            <Briefcase className="w-3.5 h-3.5 text-indigo-400" /> Candidate Portal
+          </Link>
           <a href="/#features" className="hover:text-purple-400 transition-colors">Features</a>
           <a href="/#pricing" className="hover:text-purple-400 transition-colors flex items-center gap-1">
             Pricing <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded font-mono">25-60 AED</span>
@@ -47,17 +51,21 @@ export default function Navbar() {
           {user ? (
             <div className="flex items-center gap-3">
               <Link
-                to={isSuperAdminUser ? "/superadmin" : "/company"}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md flex items-center gap-1.5 hover:opacity-90 transition-all"
+                to={isSuperAdminUser ? "/superadmin" : isCandidateUser ? "/apply" : "/company"}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 hover:opacity-90 transition-all ${
+                  isCandidateUser
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
+                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+                }`}
               >
-                <Building2 className="w-3.5 h-3.5" />
-                {isSuperAdminUser ? 'Super Admin Portal' : 'Go to Dashboard'}
+                {isCandidateUser ? <GraduationCap className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                {isSuperAdminUser ? 'Super Admin Portal' : isCandidateUser ? `Candidate: ${user.name || 'Portal'}` : 'Go to Dashboard'}
               </Link>
               
               <button
                 onClick={logout}
                 title="Logout"
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all"
+                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
               </button>

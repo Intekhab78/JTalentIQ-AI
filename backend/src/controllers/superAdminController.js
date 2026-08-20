@@ -187,3 +187,75 @@ exports.getCompanyWiseCandidates = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Get all Candidate user accounts, total logins, and application details for Super Admin
+exports.getCandidateUserLogins = async (req, res) => {
+  try {
+    let candidateUsers = await User.find({ role: 'candidate' }).select('-password').sort({ lastLoginAt: -1 });
+    const allCandidates = await Candidate.find({})
+      .populate('job', 'title department')
+      .populate('company', 'name email')
+      .sort({ appliedAt: -1 });
+
+    const candidateEmailsFromApplications = [...new Set(allCandidates.map(c => c.email.toLowerCase()))];
+    const existingUserEmails = new Set(candidateUsers.map(u => u.email.toLowerCase()));
+
+    const candidateDetailsList = [];
+
+    for (const u of candidateUsers) {
+      const userApps = allCandidates.filter(c => c.email.toLowerCase() === u.email.toLowerCase());
+      candidateDetailsList.push({
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        loginCount: u.loginCount || 1,
+        lastLoginAt: u.lastLoginAt || u.createdAt,
+        registeredAt: u.createdAt,
+        accountStatus: 'Active Candidate',
+        totalAppliedJobs: userApps.length,
+        applications: userApps.map(a => ({
+          jobTitle: a.job ? a.job.title : 'General Position',
+          companyName: a.company ? a.company.name : 'Company Workspace',
+          matchScore: a.matchScore,
+          interviewStatus: a.interviewStatus,
+          appliedAt: a.appliedAt
+        }))
+      });
+    }
+
+    for (const email of candidateEmailsFromApplications) {
+      if (!existingUserEmails.has(email)) {
+        const userApps = allCandidates.filter(c => c.email.toLowerCase() === email);
+        const firstApp = userApps[0];
+        candidateDetailsList.push({
+          _id: firstApp._id,
+          name: firstApp.name || 'Candidate Student',
+          email: email,
+          loginCount: firstApp.loginCount || 1,
+          lastLoginAt: firstApp.lastLoginAt || firstApp.appliedAt,
+          registeredAt: firstApp.appliedAt,
+          accountStatus: 'Direct Applicant',
+          totalAppliedJobs: userApps.length,
+          applications: userApps.map(a => ({
+            jobTitle: a.job ? a.job.title : 'General Position',
+            companyName: a.company ? a.company.name : 'Company Workspace',
+            matchScore: a.matchScore,
+            interviewStatus: a.interviewStatus,
+            appliedAt: a.appliedAt
+          }))
+        });
+      }
+    }
+
+    const totalCandidateUsers = candidateDetailsList.length;
+    const totalCandidateLogins = candidateDetailsList.reduce((sum, item) => sum + (item.loginCount || 1), 0);
+
+    res.json({
+      totalCandidateUsers,
+      totalCandidateLogins,
+      candidates: candidateDetailsList
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

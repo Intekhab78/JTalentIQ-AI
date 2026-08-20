@@ -5,7 +5,7 @@ const jobSchema = new mongoose.Schema({
   title: { type: String, required: true },
   department: { type: String, default: 'Engineering' },
   location: { type: String, default: 'Remote' },
-  description: { type: String, required: true },
+  description: { type: String, default: '' },
   requiredSkills: [{ type: String }],
   minExperienceYears: { type: Number, default: 0 },
   status: { type: String, enum: ['active', 'closed', 'draft'], default: 'active' },

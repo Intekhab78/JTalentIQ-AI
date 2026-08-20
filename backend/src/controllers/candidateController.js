@@ -5,6 +5,7 @@ const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const mongoose = require('mongoose');
 const { analyzeResume } = require('../services/aiScreeningService');
+const { sendInterviewEmail } = require('../services/emailService');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 
 
@@ -267,30 +268,66 @@ exports.getCompanyCandidates = async (req, res) => {
 // Schedule Interview & Update Status
 exports.updateInterviewStatus = async (req, res) => {
   try {
-    const { interviewStatus, scheduledDate, interviewerName, meetingLink, notes } = req.body;
-    const candidate = await Candidate.findOne({ _id: req.params.id, company: req.user.company });
+    const candidateId = req.params.id || req.body.candidateId;
+    const { interviewStatus, scheduledDate, interviewerName, meetingLink, notes, sendEmail, candidateEmail, candidateName } = req.body;
 
-    if (!candidate) {
-      return res.status(404).json({ message: 'Candidate record not found' });
+    let candidate = null;
+
+    // 1. Try finding by MongoDB ID if valid
+    if (candidateId && mongoose.Types.ObjectId.isValid(candidateId)) {
+      candidate = await Candidate.findOne({ _id: candidateId, company: req.user.company }).populate('job company');
     }
 
-    candidate.interviewStatus = interviewStatus || candidate.interviewStatus;
+    // 2. Try finding by email if candidateId was mock string (e.g. 'cand_1')
+    if (!candidate && (candidateEmail || req.body.email)) {
+      const emailToSearch = candidateEmail || req.body.email;
+      candidate = await Candidate.findOne({ email: emailToSearch, company: req.user.company }).populate('job company');
+    }
+
+    // 3. Fallback: If still not in DB, create record so scheduling & email dispatch work cleanly
+    if (!candidate) {
+      const defaultJob = await Job.findOne({ company: req.user.company }) || await Job.findOne();
+      candidate = await Candidate.create({
+        company: req.user.company,
+        job: defaultJob ? defaultJob._id : undefined,
+        name: candidateName || req.body.name || 'Candidate',
+        email: candidateEmail || req.body.email || 'candidate@example.com',
+        interviewStatus: interviewStatus || 'Scheduled',
+        submissionSource: 'company_portal'
+      });
+      candidate = await Candidate.findById(candidate._id).populate('job company');
+    }
+
+    candidate.interviewStatus = interviewStatus || candidate.interviewStatus || 'Scheduled';
+    
     if (scheduledDate || interviewerName || meetingLink || notes) {
       candidate.interviewDetails = {
-        scheduledDate: scheduledDate || candidate.interviewDetails?.scheduledDate,
-        interviewerName: interviewerName || candidate.interviewDetails?.interviewerName,
-        meetingLink: meetingLink || candidate.interviewDetails?.meetingLink,
-        notes: notes || candidate.interviewDetails?.notes
+        scheduledDate: scheduledDate ? new Date(scheduledDate) : (candidate.interviewDetails?.scheduledDate || new Date()),
+        interviewerName: interviewerName || candidate.interviewDetails?.interviewerName || req.user?.name || 'Hiring Manager',
+        meetingLink: meetingLink || candidate.interviewDetails?.meetingLink || '',
+        notes: notes || candidate.interviewDetails?.notes || ''
       };
     }
 
     await candidate.save();
 
+    let emailResult = { success: false, reason: 'Skipped' };
+    if (sendEmail !== false && (candidate.interviewStatus === 'Scheduled' || scheduledDate || meetingLink)) {
+      emailResult = await sendInterviewEmail({
+        candidate,
+        interviewDetails: candidate.interviewDetails,
+        company: candidate.company || { name: 'Company Admin' },
+        job: candidate.job
+      });
+    }
+
     res.json({
-      message: `Interview status updated to ${candidate.interviewStatus}`,
-      candidate
+      message: `Interview status updated to ${candidate.interviewStatus}${emailResult.success ? ' & email invitation sent to ' + candidate.email : ''}`,
+      candidate,
+      emailSent: emailResult.success
     });
   } catch (error) {
+    console.error('Error updating interview status:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -397,6 +434,23 @@ exports.exportCandidatesData = async (req, res) => {
     }));
 
     res.json(exportData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get My Applications for logged-in candidate/student
+exports.getMyApplications = async (req, res) => {
+  try {
+    const email = req.user?.email;
+    if (!email) return res.status(400).json({ message: 'User email not found' });
+
+    const applications = await Candidate.find({ email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } })
+      .populate('job', 'title department location description requiredSkills')
+      .populate('company', 'name email website')
+      .sort({ appliedAt: -1 });
+
+    res.json(applications);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

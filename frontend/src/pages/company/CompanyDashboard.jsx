@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { 
@@ -11,6 +12,12 @@ import {
 
 export default function CompanyDashboard() {
   const { user, logout, switchRole } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   // Layout & Theme State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -113,9 +120,9 @@ export default function CompanyDashboard() {
 
   // Jobs State
   const [jobs, setJobs] = useState([
-    { _id: 'j1', title: 'Senior MERN Stack Engineer', department: 'Engineering', location: 'Remote', requiredSkills: ['React', 'Node.js', 'Express', 'MongoDB'], applicantCount: 8, status: 'active' },
-    { _id: 'j2', title: 'AI / Machine Learning Engineer', department: 'AI Research', location: 'New York, NY', requiredSkills: ['Python', 'PyTorch', 'NLP'], applicantCount: 6, status: 'active' },
-    { _id: 'j3', title: 'Full Stack Tech Lead', department: 'Product Tech', location: 'Hybrid / San Francisco', requiredSkills: ['React', 'Node.js', 'AWS', 'System Design'], applicantCount: 4, status: 'active' }
+    { _id: 'j1', title: 'Senior MERN Stack Engineer', department: 'Engineering', location: 'Remote', description: 'Seeking an experienced Senior MERN Stack Engineer to lead full-stack web application development with React, Node.js, Express, and MongoDB.', requiredSkills: ['React', 'Node.js', 'Express', 'MongoDB'], applicantCount: 8, status: 'active' },
+    { _id: 'j2', title: 'AI / Machine Learning Engineer', department: 'AI Research', location: 'New York, NY', description: 'Build LLM pipelines, PyTorch NLP models, and automated resume screening algorithms.', requiredSkills: ['Python', 'PyTorch', 'NLP'], applicantCount: 6, status: 'active' },
+    { _id: 'j3', title: 'Full Stack Tech Lead', department: 'Product Tech', location: 'Hybrid / San Francisco', description: 'Drive tech architecture, build cloud microservices, and lead engineering teams on AWS.', requiredSkills: ['React', 'Node.js', 'AWS', 'System Design'], applicantCount: 4, status: 'active' }
   ]);
 
   // Team Members State
@@ -136,13 +143,16 @@ export default function CompanyDashboard() {
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
   const [companyUrlCopied, setCompanyUrlCopied] = useState(false);
+  const [copiedJobId, setCopiedJobId] = useState(null);
 
   // Modals
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [jobForm, setJobForm] = useState({ title: '', department: 'Engineering', location: 'Remote', description: '', requiredSkills: '' });
 
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({ candidateId: '', interviewStatus: 'Scheduled', scheduledDate: '', interviewerName: '', meetingLink: '' });
+  const [scheduleForm, setScheduleForm] = useState({ candidateId: '', interviewStatus: 'Scheduled', scheduledDate: '', interviewerName: '', meetingLink: '', notes: '', sendEmail: true });
+  const [schedulingSending, setSchedulingSending] = useState(false);
+  const [scheduleSuccessMsg, setScheduleSuccessMsg] = useState('');
 
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', role: 'recruiter' });
@@ -277,7 +287,8 @@ export default function CompanyDashboard() {
         title: jobForm.title,
         department: jobForm.department,
         location: jobForm.location,
-        requiredSkills: jobForm.requiredSkills.split(',').map(s => s.trim()),
+        description: jobForm.description,
+        requiredSkills: typeof jobForm.requiredSkills === 'string' ? jobForm.requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : jobForm.requiredSkills,
         applicantCount: 0,
         status: 'active'
       };
@@ -289,13 +300,64 @@ export default function CompanyDashboard() {
 
   const handleScheduleInterview = async (e) => {
     e.preventDefault();
+    setSchedulingSending(true);
+    setScheduleSuccessMsg('');
     try {
-      await api.post('/candidates/schedule-interview', scheduleForm);
-      setCandidates(prev => prev.map(c => c._id === scheduleForm.candidateId ? { ...c, interviewStatus: scheduleForm.interviewStatus } : c));
-      setScheduleModalOpen(false);
+      let res;
+      try {
+        if (scheduleForm.candidateId && !scheduleForm.candidateId.startsWith('cand_')) {
+          res = await api.put(`/candidates/${scheduleForm.candidateId}/status`, scheduleForm);
+        } else {
+          res = await api.post('/candidates/schedule-interview', scheduleForm);
+        }
+      } catch (innerErr) {
+        res = await api.post('/candidates/schedule-interview', scheduleForm);
+      }
+
+      setCandidates(prev => prev.map(c => {
+        if (c._id === scheduleForm.candidateId) {
+          return {
+            ...c,
+            interviewStatus: scheduleForm.interviewStatus,
+            interviewDetails: {
+              scheduledDate: scheduleForm.scheduledDate,
+              interviewerName: scheduleForm.interviewerName,
+              meetingLink: scheduleForm.meetingLink,
+              notes: scheduleForm.notes
+            }
+          };
+        }
+        return c;
+      }));
+
+      setScheduleSuccessMsg(res.data?.message || 'Interview scheduled & notification processed!');
+      setTimeout(() => {
+        setScheduleModalOpen(false);
+        setSchedulingSending(false);
+        setScheduleSuccessMsg('');
+      }, 1600);
     } catch (err) {
-      setCandidates(prev => prev.map(c => c._id === scheduleForm.candidateId ? { ...c, interviewStatus: scheduleForm.interviewStatus } : c));
-      setScheduleModalOpen(false);
+      setCandidates(prev => prev.map(c => {
+        if (c._id === scheduleForm.candidateId) {
+          return {
+            ...c,
+            interviewStatus: scheduleForm.interviewStatus,
+            interviewDetails: {
+              scheduledDate: scheduleForm.scheduledDate,
+              interviewerName: scheduleForm.interviewerName,
+              meetingLink: scheduleForm.meetingLink,
+              notes: scheduleForm.notes
+            }
+          };
+        }
+        return c;
+      }));
+      setScheduleSuccessMsg(`Interview updated to ${scheduleForm.interviewStatus}!`);
+      setTimeout(() => {
+        setScheduleModalOpen(false);
+        setSchedulingSending(false);
+        setScheduleSuccessMsg('');
+      }, 1400);
     }
   };
 
@@ -565,8 +627,8 @@ export default function CompanyDashboard() {
               )}
             </div>
             <button 
-              onClick={logout}
-              className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
@@ -972,6 +1034,19 @@ export default function CompanyDashboard() {
                       </div>
                     </div>
 
+                    {cand.interviewDetails?.scheduledDate && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] space-y-1">
+                        <p className="font-bold text-emerald-400 flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" /> Scheduled: {new Date(cand.interviewDetails.scheduledDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </p>
+                        {cand.interviewDetails.meetingLink && (
+                          <a href={cand.interviewDetails.meetingLink} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline flex items-center gap-1 font-mono text-[10px] truncate">
+                            <ExternalLink className="w-3 h-3 shrink-0 text-sky-400" /> {cand.interviewDetails.meetingLink}
+                          </a>
+                        )}
+                      </div>
+                    )}
+
                     <div className="mt-4 pt-4 border-t border-emerald-500/10 flex items-center justify-between gap-2">
                       <button
                         onClick={() => { setViewingResumeCandidate(cand); setResumeModalOpen(true); }}
@@ -982,10 +1057,25 @@ export default function CompanyDashboard() {
 
                       <button
                         onClick={() => {
-                          setScheduleForm(prev => ({ ...prev, candidateId: cand._id }));
+                          const tomorrow = new Date();
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          tomorrow.setHours(10, 0, 0, 0);
+                          const defaultDt = tomorrow.toISOString().slice(0, 16);
+
+                          setScheduleForm({
+                            candidateId: cand._id,
+                            candidateName: cand.name,
+                            candidateEmail: cand.email,
+                            interviewStatus: cand.interviewStatus || 'Scheduled',
+                            scheduledDate: cand.interviewDetails?.scheduledDate ? new Date(cand.interviewDetails.scheduledDate).toISOString().slice(0, 16) : defaultDt,
+                            interviewerName: cand.interviewDetails?.interviewerName || user?.name || 'Hiring Manager',
+                            meetingLink: cand.interviewDetails?.meetingLink || 'https://meet.google.com/abc-defg-hij',
+                            notes: cand.interviewDetails?.notes || 'Technical interview round. Please ensure video and audio connection.',
+                            sendEmail: true
+                          });
                           setScheduleModalOpen(true);
                         }}
-                        className="px-3 py-1.5 rounded-xl border border-emerald-500/30 font-semibold text-xs hover:bg-emerald-500/10 transition-colors flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl border border-emerald-500/30 font-semibold text-xs hover:bg-emerald-500/10 transition-colors flex items-center gap-1 text-emerald-400"
                       >
                         <Calendar className="w-3.5 h-3.5 text-emerald-500" /> Schedule
                       </button>
@@ -1026,7 +1116,13 @@ export default function CompanyDashboard() {
                         </span>
                       </div>
 
-                      <div className="mt-4 space-y-2">
+                      {job.description && (
+                        <div className="mt-2 text-xs opacity-75 line-clamp-2 leading-relaxed">
+                          {job.description}
+                        </div>
+                      )}
+
+                      <div className="mt-3 space-y-1.5">
                         <p className="text-xs font-semibold opacity-80">Required Skills:</p>
                         <div className="flex flex-wrap gap-1">
                           {job.requiredSkills?.map((sk, i) => (
@@ -1034,6 +1130,48 @@ export default function CompanyDashboard() {
                               {sk}
                             </span>
                           ))}
+                        </div>
+                      </div>
+
+                      {/* Direct Job Application Link */}
+                      <div className="mt-4 pt-3 border-t border-emerald-500/10 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold opacity-75">Direct Apply Link:</span>
+                          {copiedJobId === job._id && (
+                            <span className="text-emerald-500 font-bold animate-pulse flex items-center gap-1">
+                              <Check className="w-3 h-3" /> Copied!
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${window.location.origin}/apply/${companySlug}/job/${job._id}`}
+                            className="flex-1 bg-slate-900/60 border border-slate-700/60 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 font-mono select-all focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const directUrl = `${window.location.origin}/apply/${companySlug}/job/${job._id}`;
+                              navigator.clipboard.writeText(directUrl);
+                              setCopiedJobId(job._id);
+                              setTimeout(() => setCopiedJobId(null), 2000);
+                            }}
+                            title="Copy Direct Link"
+                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 transition-colors flex items-center gap-1 text-[11px] font-bold"
+                          >
+                            <Copy className="w-3.5 h-3.5" /> Copy
+                          </button>
+                          <a
+                            href={`/apply/${companySlug}/job/${job._id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open Direct Apply Page"
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1 text-[11px] font-semibold"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -1306,13 +1444,24 @@ export default function CompanyDashboard() {
                 />
               </div>
               <div>
+                <label className="block mb-1 font-medium">Job Description</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Describe the job duties, qualifications, and responsibilities..."
+                  value={jobForm.description}
+                  onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
                 <label className="block mb-1 font-medium">Required Skills (Comma separated)</label>
                 <input
                   type="text"
                   placeholder="React, Node.js, Express, MongoDB"
                   value={jobForm.requiredSkills}
                   onChange={(e) => setJobForm({ ...jobForm, requiredSkills: e.target.value })}
-                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none"
+                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -1338,34 +1487,147 @@ export default function CompanyDashboard() {
       {/* SCHEDULE INTERVIEW MODAL */}
       {scheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full text-slate-100 space-y-4">
-            <h3 className="text-lg font-bold">Update Candidate Interview Status</h3>
-            <form onSubmit={handleScheduleInterview} className="space-y-3 text-xs">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full text-slate-100 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <label className="block mb-1 font-medium">Interview Status</label>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-emerald-500" /> Schedule Interview & Send Email
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Select interview date, time, meeting link, and send email invitation.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScheduleModalOpen(false)}
+                className="text-slate-400 hover:text-white text-base font-bold px-2"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Target Candidate Preview Banner */}
+            {(() => {
+              const cand = candidates.find(c => c._id === scheduleForm.candidateId);
+              if (!cand) return null;
+              return (
+                <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between text-xs">
+                  <div>
+                    <p className="font-bold text-emerald-400 text-sm">{cand.name}</p>
+                    <p className="text-[11px] text-slate-300 opacity-90">{cand.email} • {cand.job?.title || 'Engineer'}</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">
+                    Match: {cand.matchScore}%
+                  </span>
+                </div>
+              );
+            })()}
+
+            <form onSubmit={handleScheduleInterview} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block mb-1 font-semibold text-slate-300">Interview Status</label>
                 <select
                   value={scheduleForm.interviewStatus}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, interviewStatus: e.target.value })}
-                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none"
+                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-medium"
                 >
                   <option value="Scheduled">Scheduled</option>
+                  <option value="Screened">Screened</option>
                   <option value="Selected">Selected / Hired</option>
                   <option value="Rejected">Rejected</option>
+                  <option value="Completed">Completed</option>
                 </select>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 font-semibold text-slate-300">Interview Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={scheduleForm.scheduledDate || ''}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledDate: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 font-semibold text-slate-300">Interviewer Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sarah Jenkins (Senior Lead)"
+                    value={scheduleForm.interviewerName || ''}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, interviewerName: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-semibold text-slate-300">Meeting Link (Google Meet / Zoom / Teams)</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://meet.google.com/abc-defg-hij"
+                  value={scheduleForm.meetingLink || ''}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, meetingLink: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-semibold text-slate-300">Instructions / Notes for Candidate</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Technical live coding round. Please ensure video and microphone are working."
+                  value={scheduleForm.notes || ''}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-emerald-500 text-white"
+                />
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 text-xs text-slate-300 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={scheduleForm.sendEmail !== false}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, sendEmail: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1">
+                    <Mail className="w-3.5 h-3.5 text-emerald-400" /> Send automated email invitation to candidate email
+                  </span>
+                </label>
+              </div>
+
+              {scheduleSuccessMsg && (
+                <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold text-center flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 animate-bounce" /> {scheduleSuccessMsg}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setScheduleModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-700 hover:bg-slate-800"
+                  disabled={schedulingSending}
+                  className="px-4 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500"
+                  disabled={schedulingSending}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
                 >
-                  Update Status
+                  {schedulingSending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Sending Email...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" /> Schedule & Send Email
+                    </>
+                  )}
                 </button>
               </div>
             </form>

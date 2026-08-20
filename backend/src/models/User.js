@@ -7,11 +7,13 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['super_admin', 'company_admin', 'team_member'], 
+    enum: ['super_admin', 'company_admin', 'team_member', 'candidate'], 
     default: 'company_admin' 
   },
   company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', default: null },
   isActive: { type: Boolean, default: true },
+  loginCount: { type: Number, default: 0 },
+  lastLoginAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
 

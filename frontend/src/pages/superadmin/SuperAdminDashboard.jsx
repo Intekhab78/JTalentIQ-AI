@@ -5,7 +5,7 @@ import {
   Building2, Users, DollarSign, FileCheck, ShieldAlert, CheckCircle2, XCircle, 
   Plus, Edit2, TrendingUp, BarChart3, Clock, RefreshCw, Key, ArrowUpRight,
   FileText, Sparkles, Code, Download, Copy, Check, X, LayoutDashboard, ShieldCheck,
-  ChevronLeft, ChevronRight, Settings, LogOut, Cpu, Search, Filter, AlertCircle, Palette, Globe, Link2, ExternalLink, Activity
+  ChevronLeft, ChevronRight, Settings, LogOut, Cpu, Search, Filter, AlertCircle, Palette, Globe, Link2, ExternalLink, Activity, UserCheck
 } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
@@ -25,6 +25,40 @@ export default function SuperAdminDashboard() {
     totalScreenedResumes: 14,
     totalInterviewsScheduled: 5,
     totalMonthlyRevenue: 14850
+  });
+
+  const [candidateLoginsData, setCandidateLoginsData] = useState({
+    totalCandidateUsers: 12,
+    totalCandidateLogins: 28,
+    candidates: [
+      {
+        _id: 'cand_u1',
+        name: 'Athahdeep',
+        email: 'athahdeep@example.com',
+        loginCount: 5,
+        lastLoginAt: new Date(),
+        registeredAt: new Date(Date.now() - 86400000 * 3),
+        accountStatus: 'Active Candidate',
+        totalAppliedJobs: 2,
+        applications: [
+          { jobTitle: 'Senior MERN Stack Engineer', companyName: 'Nexus', matchScore: 92, interviewStatus: 'Scheduled' },
+          { jobTitle: 'Frontend Engineer', companyName: 'JTS Middle East Fze', matchScore: 88, interviewStatus: 'Screened' }
+        ]
+      },
+      {
+        _id: 'cand_u2',
+        name: 'Elena Rostova',
+        email: 'elena.rostova@tech.io',
+        loginCount: 3,
+        lastLoginAt: new Date(Date.now() - 3600000 * 4),
+        registeredAt: new Date(Date.now() - 86400000 * 5),
+        accountStatus: 'Active Candidate',
+        totalAppliedJobs: 1,
+        applications: [
+          { jobTitle: 'Lead AI Engineer', companyName: 'Innovate AI Labs', matchScore: 95, interviewStatus: 'Selected' }
+        ]
+      }
+    ]
   });
 
   const [companies, setCompanies] = useState([
@@ -195,6 +229,15 @@ export default function SuperAdminDashboard() {
 
       const compCandRes = await api.get('/superadmin/company-candidates');
       if (Array.isArray(compCandRes.data) && compCandRes.data.length > 0) setCompanyCandidates(compCandRes.data);
+
+      try {
+        const candLoginsRes = await api.get('/superadmin/candidate-logins');
+        if (candLoginsRes.data && Array.isArray(candLoginsRes.data.candidates)) {
+          setCandidateLoginsData(candLoginsRes.data);
+        }
+      } catch (eLog) {
+        console.warn('Candidate logins sync note:', eLog.message);
+      }
     } catch (err) {
       console.warn('SuperAdmin live API sync note:', err.message);
     } finally {
@@ -595,33 +638,37 @@ export default function SuperAdminDashboard() {
                 </p>
               </div>
 
-              {/* Source Channel Summary Bar */}
+              {/* Candidate Accounts & Login Metrics Bar */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <p className="text-[11px] text-slate-400 font-medium">Total Resumes</p>
-                    <h4 className="text-xl font-extrabold text-white">14</h4>
+                    <p className="text-[11px] text-slate-400 font-medium">🎓 Registered Candidates</p>
+                    <h4 className="text-xl font-extrabold text-emerald-400">
+                      {candidateLoginsData.totalCandidateUsers || 12} Registered
+                    </h4>
                   </div>
-                  <FileText className="w-5 h-5 text-purple-400" />
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <p className="text-[11px] text-slate-400 font-medium">🏢 Company Portal Links</p>
-                    <h4 className="text-xl font-extrabold text-indigo-400">9 Submissions</h4>
+                    <p className="text-[11px] text-slate-400 font-medium">🔑 Candidate Logins</p>
+                    <h4 className="text-xl font-extrabold text-indigo-400">
+                      {candidateLoginsData.totalCandidateLogins || 28} Logins
+                    </h4>
                   </div>
-                  <Link2 className="w-5 h-5 text-indigo-400" />
+                  <Key className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <p className="text-[11px] text-slate-400 font-medium">⚡ Embedded Widget</p>
-                    <h4 className="text-xl font-extrabold text-teal-400">3 Submissions</h4>
+                    <p className="text-[11px] text-slate-400 font-medium">💼 Job Applications</p>
+                    <h4 className="text-xl font-extrabold text-teal-400">14 Applied</h4>
                   </div>
-                  <Code className="w-5 h-5 text-teal-400" />
+                  <FileText className="w-5 h-5 text-teal-400" />
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <p className="text-[11px] text-slate-400 font-medium">🌐 Direct Website</p>
-                    <h4 className="text-xl font-extrabold text-purple-400">2 Submissions</h4>
+                    <p className="text-[11px] text-slate-400 font-medium">🏢 Active Portals</p>
+                    <h4 className="text-xl font-extrabold text-purple-400">9 Portals</h4>
                   </div>
                   <Globe className="w-5 h-5 text-purple-400" />
                 </div>
@@ -654,6 +701,90 @@ export default function SuperAdminDashboard() {
                       <option value="direct_website">🌐 Direct Website</option>
                     </select>
                   </div>
+                </div>
+              </div>
+
+              {/* REGISTERED CANDIDATE USERS & LOGINS TABLE */}
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
+                  <div>
+                    <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                      <UserCheck className="w-5 h-5 text-emerald-400" /> Candidate User Accounts & Login Activity Log
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Database tracking for candidate user registrations, login session counts, and applied job positions.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {candidateLoginsData.candidates?.length || 0} Registered Candidates
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-950 uppercase font-bold text-[10px] text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Candidate User</th>
+                        <th className="p-3">Account Type</th>
+                        <th className="p-3">Total Logins</th>
+                        <th className="p-3">Last Login Time</th>
+                        <th className="p-3">Jobs Applied</th>
+                        <th className="p-3">Target Companies & Positions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {candidateLoginsData.candidates && candidateLoginsData.candidates.length > 0 ? (
+                        candidateLoginsData.candidates.map((cand) => (
+                          <tr key={cand._id} className="hover:bg-slate-800/40 transition-colors">
+                            <td className="p-3">
+                              <p className="font-extrabold text-white text-sm">{cand.name}</p>
+                              <p className="text-[10px] text-slate-400">{cand.email}</p>
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                {cand.accountStatus || 'Active Candidate'}
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono font-bold text-indigo-400">
+                              🔑 {cand.loginCount || 1} Logins
+                            </td>
+                            <td className="p-3">
+                              <p className="text-[11px] font-semibold text-slate-300">
+                                {cand.lastLoginAt ? new Date(cand.lastLoginAt).toLocaleString() : 'Just Now'}
+                              </p>
+                              <p className="text-[10px] text-slate-500">Reg: {new Date(cand.registeredAt || Date.now()).toLocaleDateString()}</p>
+                            </td>
+                            <td className="p-3 font-bold text-teal-400">
+                              {cand.totalAppliedJobs || cand.applications?.length || 0} Applied
+                            </td>
+                            <td className="p-3 space-y-1">
+                              {cand.applications && cand.applications.length > 0 ? (
+                                cand.applications.map((app, idx) => (
+                                  <div key={idx} className="flex items-center gap-1.5 text-[10px]">
+                                    <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                                      {app.companyName || 'Nexus'}
+                                    </span>
+                                    <span className="text-slate-300 font-medium truncate max-w-[180px]">
+                                      {app.jobTitle}
+                                    </span>
+                                    <span className="text-emerald-400 font-bold">({app.matchScore}%)</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-[10px] text-slate-500 italic">No applications yet</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-slate-500">
+                            No candidate user logins recorded in database yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

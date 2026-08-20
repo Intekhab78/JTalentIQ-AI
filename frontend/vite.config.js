@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://jtalentiqapi.jtsonline.shop',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false
       }

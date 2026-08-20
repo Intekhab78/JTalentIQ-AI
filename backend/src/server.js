@@ -34,16 +34,28 @@ const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/resume_screening_db';
 
 // DB Connection & Server Launch
-mongoose.connect(MONGODB_URI)
-  .then(() => {
+async function connectDB() {
+  try {
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
     console.log('✅ Connected to MongoDB Database');
-    app.listen(PORT, () => {
-      console.log(`🚀 AI Resume Screening Backend running on port ${PORT}`);
-    });
-  })
-  .catch(err => {
+  } catch (err) {
+    if (MONGODB_URI.includes(':27017/')) {
+      const tunnelUri = MONGODB_URI.replace(':27017/', ':27018/');
+      try {
+        console.log('⚠️ Failed on port 27017, trying local SSH tunnel port 27018...');
+        await mongoose.connect(tunnelUri, { serverSelectionTimeoutMS: 5000 });
+        console.log('✅ Connected to VPS MongoDB via SSH Tunnel (port 27018)!');
+        return;
+      } catch (tunnelErr) {
+        console.warn('⚠️ MongoDB SSH Tunnel connection issue:', tunnelErr.message);
+      }
+    }
     console.warn('⚠️ MongoDB connection issue (Running in standalone API mode):', err.message);
-    app.listen(PORT, () => {
-      console.log(`🚀 AI Resume Screening Backend running on port ${PORT} (Standalone mode)`);
-    });
+  }
+}
+
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 AI Resume Screening Backend running on port ${PORT}`);
   });
+});
